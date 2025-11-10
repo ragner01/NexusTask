@@ -5,6 +5,7 @@
 #include <thread>
 #include <random>
 #include <iomanip>
+#include <atomic>
 
 using namespace task_engine;
 

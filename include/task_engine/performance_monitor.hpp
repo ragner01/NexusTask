@@ -122,7 +122,17 @@ public:
     }
 
     void reset() {
-        metrics_ = Metrics{};
+        metrics_.tasks_submitted.store(0, std::memory_order_release);
+        metrics_.tasks_completed.store(0, std::memory_order_release);
+        metrics_.tasks_failed.store(0, std::memory_order_release);
+        metrics_.tasks_retried.store(0, std::memory_order_release);
+        metrics_.tasks_cancelled.store(0, std::memory_order_release);
+        metrics_.total_execution_time_us.store(0, std::memory_order_release);
+        metrics_.max_execution_time_us.store(0, std::memory_order_release);
+        metrics_.min_execution_time_us.store(UINT64_MAX, std::memory_order_release);
+        metrics_.queue_wait_time_us.store(0, std::memory_order_release);
+        metrics_.inflight_tasks.store(0, std::memory_order_release);
+        metrics_.peak_inflight.store(0, std::memory_order_release);
         start_time_ = std::chrono::steady_clock::now();
     }
 
