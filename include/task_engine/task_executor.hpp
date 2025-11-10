@@ -39,9 +39,9 @@ public:
     explicit TaskExecutor(size_t num_threads = std::thread::hardware_concurrency())
         : thread_pool_(std::make_unique<ThreadPool>(num_threads))
         , graph_(std::make_unique<DependencyGraph>())
+        , monitor_(std::make_shared<PerformanceMonitor>())
         , scheduler_running_(false)
         , next_task_id_(1)
-        , monitor_(std::make_shared<PerformanceMonitor>())
     {
         install_pool_hooks();
     }
@@ -50,9 +50,9 @@ public:
                  std::shared_ptr<PerformanceMonitor> monitor = std::make_shared<PerformanceMonitor>())
         : thread_pool_(std::move(pool))
         , graph_(std::make_unique<DependencyGraph>())
+        , monitor_(std::move(monitor))
         , scheduler_running_(false)
         , next_task_id_(1)
-        , monitor_(std::move(monitor))
     {
         install_pool_hooks();
     }
@@ -180,7 +180,7 @@ private:
             graph_->add_dependency(task_id, dep_id);
         }
 
-        if (task->is_ready()) {
+        if (task->is_ready() && task->try_mark_queued()) {
             thread_pool_->submit(task.get(), task->priority());
         }
 
@@ -220,7 +220,10 @@ private:
                 monitor_->record_retry();
             }
             task->reset_for_retry();
-            thread_pool_->submit(task, task->priority());
+            // After reset, try_mark_queued will allow re-submission
+            if (task->try_mark_queued()) {
+                thread_pool_->submit(task, task->priority());
+            }
             return;
         }
         fail_promise(task->id(), error);
@@ -266,8 +269,9 @@ private:
         while (scheduler_running_.load(std::memory_order_acquire)) {
             auto ready_tasks = graph_->get_ready_tasks();
             for (auto& task : ready_tasks) {
-                auto status = task->status();
-                if (status == TaskStatus::Pending || status == TaskStatus::Ready) {
+                // Atomically transition from Pending/Ready to prevent duplicate submissions
+                // Only submit if we successfully mark it as queued
+                if (task->try_mark_queued()) {
                     thread_pool_->submit(task.get(), task->priority());
                 }
             }

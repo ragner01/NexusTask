@@ -142,10 +142,10 @@ public:
     }
 
     void enable_in_memory_transport() {
-        set_remote_submitter([this](const NodeInfo& node,
-                                    std::function<TaskResult()> func,
-                                    const std::string& name,
-                                    const SubmissionOptions& submission) -> TaskId {
+        set_remote_submitter([](const NodeInfo& node,
+                                std::function<TaskResult()> func,
+                                const std::string& name,
+                                const SubmissionOptions& submission) -> TaskId {
             if (!node.remote_executor) {
                 throw std::runtime_error("Remote node missing in-memory executor");
             }
@@ -298,7 +298,7 @@ private:
 
     std::unique_ptr<TaskExecutor> local_executor_;
     std::string local_address_;
-    uint16_t local_port_;
+    [[maybe_unused]] uint16_t local_port_;
     std::atomic<bool> running_;
     DistributionPolicy policy_;
     RemoteSubmitCallback remote_submitter_;

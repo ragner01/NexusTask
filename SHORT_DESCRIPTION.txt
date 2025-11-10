@@ -1,0 +1,2 @@
+⚡ High-Performance Distributed Task Execution Engine in C++20 - Lock-free queues, work-stealing scheduler, dependency management, and multi-node distribution
+

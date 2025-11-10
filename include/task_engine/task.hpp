@@ -139,6 +139,34 @@ public:
                status_.load(std::memory_order_acquire) == TaskStatus::Pending;
     }
 
+    /**
+     * Atomically transition from Ready to Running to prevent duplicate submissions
+     * Returns true if transition was successful (task can be submitted)
+     * This prevents duplicate submissions by ensuring only one thread can mark it as queued
+     * 
+     * Note: We transition Ready -> Running here even though execution hasn't started yet.
+     * This is safe because Running state means "submitted to thread pool", and the
+     * actual execution will happen when worker picks it up.
+     */
+    bool try_mark_queued() {
+        TaskStatus expected = TaskStatus::Ready;
+        // Try Ready -> Running (atomically claim the task for submission)
+        if (status_.compare_exchange_strong(expected, TaskStatus::Running,
+                                            std::memory_order_acq_rel,
+                                            std::memory_order_acquire)) {
+            return true;
+        }
+        // Also handle Pending -> Running (for tasks without dependencies)
+        expected = TaskStatus::Pending;
+        if (status_.compare_exchange_strong(expected, TaskStatus::Running,
+                                            std::memory_order_acq_rel,
+                                            std::memory_order_acquire)) {
+            return true;
+        }
+        // If already Running, Completed, Failed, or Cancelled, don't submit
+        return false;
+    }
+
     TaskId id() const { return id_; }
     const std::string& name() const { return name_; }
     TaskStatus status() const { return status_.load(std::memory_order_acquire); }

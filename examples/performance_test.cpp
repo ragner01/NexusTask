@@ -73,7 +73,7 @@ int main() {
     std::cout << "Tasks submitted: " << metrics.tasks_submitted << "\n";
     std::cout << "Tasks completed: " << metrics.tasks_completed << "\n";
     std::cout << "Tasks failed: " << metrics.tasks_failed << "\n";
-    std::cout << "Average execution time: " << monitor.get_average_execution_time() << " μs\n";
+    std::cout << "Average execution time: " << monitor.average_execution_time() << " μs\n";
     std::cout << "Min execution time: " << metrics.min_execution_time_us << " μs\n";
     std::cout << "Max execution time: " << metrics.max_execution_time_us << " μs\n";
     std::cout << "Throughput: " << (NUM_TASKS * 1000.0 / total_duration) << " tasks/sec\n";
@@ -82,4 +82,3 @@ int main() {
     
     return 0;
 }
-
