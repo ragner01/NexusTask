@@ -50,6 +50,12 @@ target_link_libraries(new_features_demo taskengine pthread)
 add_executable(more_features_demo examples/more_features_demo.cpp)
 target_link_libraries(more_features_demo taskengine pthread)
 
+add_executable(advanced_features_demo examples/advanced_features_demo.cpp)
+target_link_libraries(advanced_features_demo taskengine pthread)
+
+add_executable(resource_management_demo examples/resource_management_demo.cpp)
+target_link_libraries(resource_management_demo taskengine pthread)
+
 # Tests
 add_executable(unit_tests tests/unit_tests.cpp)
 target_link_libraries(unit_tests taskengine pthread)

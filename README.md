@@ -32,6 +32,11 @@
 - **Task Chaining**: Functional composition and pipeline execution
 - **Metrics Export**: JSON, Prometheus, and CSV formats
 - **Unit Test Framework**: Built-in testing utilities
+- **Task Groups**: Organize and manage collections of related tasks
+- **Health Monitoring**: System health checks and status monitoring
+- **Configuration Management**: File-based configuration loading
+- **Resource Monitoring**: Track CPU, memory, and execution time limits
+- **Task Preemption**: High-priority task preemption support
 
 ## 📋 Requirements
 
@@ -59,6 +64,8 @@ make -j$(nproc)
 ./distributed_demo
 ./new_features_demo
 ./more_features_demo
+./advanced_features_demo
+./resource_management_demo
 
 # Run tests
 ./unit_tests
@@ -142,7 +149,12 @@ nexustask/
 │       ├── rate_limiter.hpp    # Rate limiting
 │       ├── task_chain.hpp      # Task chaining
 │       ├── metrics_exporter.hpp # Metrics export
-│       └── test_framework.hpp  # Unit test framework
+│       ├── test_framework.hpp  # Unit test framework
+│       ├── task_group.hpp     # Task groups
+│       ├── health_monitor.hpp  # Health monitoring
+│       ├── config.hpp          # Configuration management
+│       ├── resource_monitor.hpp # Resource limits
+│       └── task_preemptor.hpp  # Task preemption
 ├── src/                        # Implementation files
 ├── examples/                   # Example applications
 │   ├── demo.cpp                # Basic usage examples
@@ -150,7 +162,9 @@ nexustask/
 │   ├── distributed_demo.cpp    # Distributed execution demo
 │   ├── advanced_examples.cpp   # Advanced features
 │   ├── new_features_demo.cpp   # New features demo
-│   └── more_features_demo.cpp  # More features demo
+│   ├── more_features_demo.cpp  # More features demo
+│   ├── advanced_features_demo.cpp # Config, groups, health
+│   └── resource_management_demo.cpp # Resource limits & preemption
 └── tests/                      # Unit tests
     └── unit_tests.cpp          # Test suite
 ```
@@ -323,6 +337,82 @@ std::string prom = MetricsExporter::to_prometheus(metrics);
 
 // Export as CSV
 std::string csv = MetricsExporter::to_csv(metrics);
+```
+
+### Example 11: Task Groups
+```cpp
+TaskGroup group(executor, "DataProcessing");
+
+// Add multiple tasks to group
+for (int i = 0; i < 10; ++i) {
+    group.add([i]() -> TaskResult {
+        return process_data(i);
+    }, "Process_" + std::to_string(i));
+}
+
+// Wait for all tasks in group
+group.wait();
+
+// Get group statistics
+auto stats = group.get_stats();
+std::cout << "Completed: " << stats.completed << "\n";
+```
+
+### Example 12: Health Monitoring
+```cpp
+HealthMonitor health(executor);
+health.set_thresholds(100, 1000, 10.0);  // max_inflight, max_pending, min_throughput
+
+auto status = health.check();
+if (!status.healthy) {
+    std::cout << "System unhealthy: " << status.status_message << "\n";
+}
+```
+
+### Example 13: Configuration Management
+```cpp
+// Load from file (key=value format)
+auto config = Config::load_from_file("nexustask.conf");
+
+int threads = config->get_int("threads", 4);
+bool monitoring = config->get_bool("enable_monitoring", false);
+double timeout = config->get_double("timeout_ms", 1000.0);
+```
+
+### Example 14: Resource Limits
+```cpp
+ResourceMonitor monitor;
+
+ResourceLimits limits;
+limits.max_execution_time = std::chrono::milliseconds(100);
+limits.max_memory_bytes = 1024 * 1024;  // 1MB
+
+auto task_id = executor.submit([]() -> TaskResult {
+    // Long-running task
+    return 0;
+}, "LimitedTask");
+
+monitor.start_monitoring(task_id, limits);
+
+// Check limits periodically
+if (monitor.check_limits(task_id)) {
+    executor.cancel(task_id);
+}
+```
+
+### Example 15: Task Preemption
+```cpp
+TaskPreemptor preemptor(executor);
+preemptor.set_enabled(true);
+
+// Submit low priority tasks
+executor.submit([]() -> TaskResult { return 0; }, "LowPriority",
+                TaskOptions{.priority = TaskPriority::Low});
+
+// Preempt for high priority task
+auto high_id = executor.submit([]() -> TaskResult { return 0; }, "HighPriority",
+                               TaskOptions{.priority = TaskPriority::High});
+preemptor.preempt_for(high_id, TaskPriority::Normal);
 ```
 
 ## 📈 Monitoring & Metrics

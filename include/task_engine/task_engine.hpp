@@ -19,6 +19,11 @@
 #include "rate_limiter.hpp"
 #include "task_chain.hpp"
 #include "metrics_exporter.hpp"
+#include "task_group.hpp"
+#include "health_monitor.hpp"
+#include "config.hpp"
+#include "resource_monitor.hpp"
+#include "task_preemptor.hpp"
 
 namespace task_engine {
     // All components are now available
