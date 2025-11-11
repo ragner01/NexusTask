@@ -60,6 +60,10 @@ target_link_libraries(resource_management_demo taskengine pthread)
 add_executable(unit_tests tests/unit_tests.cpp)
 target_link_libraries(unit_tests taskengine pthread)
 
+# Enable testing
+enable_testing()
+add_test(NAME UnitTests COMMAND unit_tests)
+
 # Install
 install(TARGETS taskengine DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)
