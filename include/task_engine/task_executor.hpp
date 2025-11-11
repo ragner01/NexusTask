@@ -136,6 +136,7 @@ public:
                 monitor_->record_cancellation();
             }
             graph_->notify_task_completed(id);
+            task->clear_enqueued_flag();
             return true;
         }
         return false;
@@ -167,12 +168,16 @@ private:
             register_promise(task_id, promise);
         }
 
-        task->set_callback([this, task_id, callback = std::move(submission.callback)](TaskResult result) {
+        std::weak_ptr<Task> weak_task = task;
+        task->set_callback([this, task_id, weak_task, callback = std::move(submission.callback)](TaskResult result) {
             if (callback) {
                 callback(result);
             }
             fulfill_promise(task_id, result);
             graph_->notify_task_completed(task_id);
+            if (auto locked = weak_task.lock()) {
+                locked->clear_enqueued_flag();
+            }
         });
 
         graph_->add_task(task);
@@ -180,7 +185,7 @@ private:
             graph_->add_dependency(task_id, dep_id);
         }
 
-        if (task->is_ready() && task->try_mark_queued()) {
+        if (task->is_ready() && task->try_mark_enqueued()) {
             thread_pool_->submit(task.get(), task->priority());
         }
 
@@ -220,14 +225,14 @@ private:
                 monitor_->record_retry();
             }
             task->reset_for_retry();
-            // After reset, try_mark_queued will allow re-submission
-            if (task->try_mark_queued()) {
+            if (task->try_mark_enqueued()) {
                 thread_pool_->submit(task, task->priority());
             }
             return;
         }
         fail_promise(task->id(), error);
         graph_->notify_task_completed(task->id());
+        task->clear_enqueued_flag();
     }
 
     void register_promise(TaskId id, std::shared_ptr<std::promise<TaskResult>> promise) {
@@ -269,9 +274,7 @@ private:
         while (scheduler_running_.load(std::memory_order_acquire)) {
             auto ready_tasks = graph_->get_ready_tasks();
             for (auto& task : ready_tasks) {
-                // Atomically transition from Pending/Ready to prevent duplicate submissions
-                // Only submit if we successfully mark it as queued
-                if (task->try_mark_queued()) {
+                if (task->try_mark_enqueued()) {
                     thread_pool_->submit(task.get(), task->priority());
                 }
             }

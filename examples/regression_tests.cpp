@@ -23,13 +23,14 @@ int main() {
 
     std::cout << "1. Retry Handling\n------------------\n";
     TaskOptions retry_options;
-    retry_options.max_retries = 2;
+    retry_options.max_retries = 2;  // Allow 2 retries (3 total attempts)
     retry_options.priority = TaskPriority::High;
     std::atomic<int> retry_attempts{0};
 
     auto retry_task = executor.submit([&]() -> TaskResult {
         auto attempt = retry_attempts.fetch_add(1, std::memory_order_relaxed) + 1;
         std::cout << "Retryable task attempt " << attempt << "\n";
+        // Fail on first 2 attempts, succeed on 3rd (with max_retries=2, this is the limit)
         if (attempt < 3) {
             throw std::runtime_error("Planned failure to test retry path");
         }

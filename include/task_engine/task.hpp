@@ -135,41 +135,24 @@ public:
      * Check if task is ready to execute (all dependencies satisfied)
      */
     bool is_ready() const {
+        auto status = status_.load(std::memory_order_acquire);
         return dependencies_count_.load(std::memory_order_acquire) == 0 &&
-               status_.load(std::memory_order_acquire) == TaskStatus::Pending;
-    }
-
-    /**
-     * Atomically transition from Ready to Running to prevent duplicate submissions
-     * Returns true if transition was successful (task can be submitted)
-     * This prevents duplicate submissions by ensuring only one thread can mark it as queued
-     * 
-     * Note: We transition Ready -> Running here even though execution hasn't started yet.
-     * This is safe because Running state means "submitted to thread pool", and the
-     * actual execution will happen when worker picks it up.
-     */
-    bool try_mark_queued() {
-        TaskStatus expected = TaskStatus::Ready;
-        // Try Ready -> Running (atomically claim the task for submission)
-        if (status_.compare_exchange_strong(expected, TaskStatus::Running,
-                                            std::memory_order_acq_rel,
-                                            std::memory_order_acquire)) {
-            return true;
-        }
-        // Also handle Pending -> Running (for tasks without dependencies)
-        expected = TaskStatus::Pending;
-        if (status_.compare_exchange_strong(expected, TaskStatus::Running,
-                                            std::memory_order_acq_rel,
-                                            std::memory_order_acquire)) {
-            return true;
-        }
-        // If already Running, Completed, Failed, or Cancelled, don't submit
-        return false;
+               (status == TaskStatus::Pending || status == TaskStatus::Ready) &&
+               !enqueued_.load(std::memory_order_acquire);
     }
 
     TaskId id() const { return id_; }
     const std::string& name() const { return name_; }
     TaskStatus status() const { return status_.load(std::memory_order_acquire); }
+    bool try_mark_enqueued() {
+        bool expected = false;
+        return enqueued_.compare_exchange_strong(expected, true, std::memory_order_acq_rel);
+    }
+
+    void clear_enqueued_flag() {
+        enqueued_.store(false, std::memory_order_release);
+    }
+
     TaskPriority priority() const noexcept { return options_.priority; }
     void set_priority(TaskPriority priority) noexcept { options_.priority = priority; }
     const std::string& category() const noexcept { return options_.category; }
@@ -177,7 +160,18 @@ public:
     size_t max_retries() const noexcept { return options_.max_retries; }
     size_t attempts() const noexcept { return attempts_.load(std::memory_order_acquire); }
     bool can_retry() const noexcept {
-        return !cancelled_.load(std::memory_order_acquire) && attempts() <= options_.max_retries;
+        if (cancelled_.load(std::memory_order_acquire)) {
+            return false;
+        }
+        if (options_.max_retries == 0) {
+            return false;  // No retries allowed
+        }
+        // max_retries is the maximum number of retries allowed
+        // attempts() counts total attempts (1 = initial, 2+ = retries)
+        // After attempt N fails, we've used (N-1) retries
+        // We can retry if (attempts() - 1) < max_retries
+        size_t retries_used = attempts() > 0 ? attempts() - 1 : 0;
+        return retries_used < options_.max_retries;
     }
     bool cancel() {
         bool expected = false;
@@ -247,6 +241,7 @@ public:
         status_.store(TaskStatus::Pending, std::memory_order_release);
         start_time_.reset();
         end_time_.reset();
+        clear_enqueued_flag();
     }
 
 private:
@@ -261,6 +256,7 @@ private:
     TaskOptions options_;
     std::unordered_map<std::string, std::string> metadata_;
     std::atomic<bool> cancelled_{false};
+    std::atomic<bool> enqueued_{false};
     std::atomic<size_t> attempts_{0};
 
     TaskCallback callback_;
