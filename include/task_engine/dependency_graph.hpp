@@ -86,7 +86,10 @@ public:
         
         for (const auto& [id, task] : tasks_) {
             auto status = task->status();
-            if (status != TaskStatus::Completed && status != TaskStatus::Failed) {
+            // A task is "completed" if it's in a terminal state
+            if (status != TaskStatus::Completed && 
+                status != TaskStatus::Failed && 
+                status != TaskStatus::Cancelled) {
                 return false;
             }
         }
