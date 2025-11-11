@@ -261,10 +261,22 @@ private:
                 std::unique_lock<std::mutex> lock(mutex_);
                 cv_.wait(lock, [this] { 
                     return !running_.load(std::memory_order_acquire) || 
-                           !global_queue_->empty(); 
+                           has_pending_work_locked(); 
                 });
             }
         }
+    }
+
+    bool has_pending_work_locked() const {
+        if (!global_queue_->empty()) {
+            return true;
+        }
+        for (const auto& queue : local_queues_) {
+            if (!queue->empty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     size_t num_threads_;

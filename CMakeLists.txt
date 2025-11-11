@@ -44,6 +44,9 @@ target_link_libraries(regression_tests taskengine pthread)
 add_executable(advanced_examples examples/advanced_examples.cpp)
 target_link_libraries(advanced_examples taskengine pthread)
 
+add_executable(new_features_demo examples/new_features_demo.cpp)
+target_link_libraries(new_features_demo taskengine pthread)
+
 # Install
 install(TARGETS taskengine DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)

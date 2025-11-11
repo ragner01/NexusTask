@@ -13,6 +13,9 @@
 #include "task_executor.hpp"
 #include "performance_monitor.hpp"
 #include "distributed_executor.hpp"
+#include "task_scheduler.hpp"
+#include "task_batch.hpp"
+#include "task_cache.hpp"
 
 namespace task_engine {
     // All components are now available
