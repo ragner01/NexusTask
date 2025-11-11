@@ -25,6 +25,9 @@
 - **Metrics Snapshot API**: Thread-safe metrics collection without blocking
 - **Graceful Shutdown**: Clean resource management and task completion
 - **Exception Safety**: Strong exception guarantees throughout
+- **Task Scheduling**: Delayed and periodic task execution
+- **Task Batching**: Group and manage multiple related tasks together
+- **Result Caching**: In-memory result caching with TTL support
 
 ## 📋 Requirements
 
@@ -50,6 +53,7 @@ make -j$(nproc)
 ./task_engine_demo
 ./performance_test
 ./distributed_demo
+./new_features_demo
 ```
 
 ### Basic Usage
@@ -123,13 +127,17 @@ nexustask/
 │       ├── dependency_graph.hpp # Dependency management
 │       ├── task_executor.hpp   # High-level executor
 │       ├── performance_monitor.hpp # Metrics collection
-│       └── distributed_executor.hpp # Distributed execution
+│       ├── distributed_executor.hpp # Distributed execution
+│       ├── task_scheduler.hpp  # Task scheduling
+│       ├── task_batch.hpp      # Task batching
+│       └── task_cache.hpp      # Result caching
 ├── src/                        # Implementation files
 └── examples/                   # Example applications
     ├── demo.cpp                # Basic usage examples
     ├── performance_test.cpp    # Performance benchmarking
     ├── distributed_demo.cpp    # Distributed execution demo
-    └── advanced_examples.cpp   # Advanced features
+    ├── advanced_examples.cpp   # Advanced features
+    └── new_features_demo.cpp    # New features demo
 ```
 
 ## 🎯 Performance Characteristics
@@ -232,18 +240,41 @@ executor.submit(
 );
 ```
 
-### Example 4: Distributed Execution
+### Example 5: Task Scheduling
 ```cpp
-DistributedExecutor dist("localhost", 8080, 8);
-dist.add_node("node1.example.com", 8080, 16);
-dist.add_node("node2.example.com", 8080, 16);
-dist.set_policy(DistributionPolicy::LeastLoaded);
+TaskScheduler scheduler(executor);
+scheduler.start();
 
-// Tasks automatically distributed across nodes
-for (int i = 0; i < 1000; ++i) {
-    dist.submit([i]() -> TaskResult {
-        return compute(i);
-    }, "Task_" + std::to_string(i));
+// Schedule delayed task
+scheduler.schedule_after([]() -> TaskResult {
+    return process_data();
+}, std::chrono::seconds(5), "DelayedTask");
+
+// Schedule periodic task
+scheduler.schedule_periodic([]() -> TaskResult {
+    return health_check();
+}, std::chrono::minutes(1), "HealthCheck");
+```
+
+### Example 6: Task Batching
+```cpp
+TaskBatch batch(executor);
+for (int i = 0; i < 100; ++i) {
+    batch.add([i]() -> TaskResult {
+        return process_item(i);
+    }, "Item_" + std::to_string(i));
+}
+batch.wait();  // Wait for all tasks
+```
+
+### Example 7: Result Caching
+```cpp
+TaskResultCache<std::string> cache(std::chrono::minutes(5));
+
+auto result = cache.get("expensive_computation");
+if (!result.has_value()) {
+    result = expensive_computation();
+    cache.put("expensive_computation", *result);
 }
 ```
 
