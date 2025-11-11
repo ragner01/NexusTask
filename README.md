@@ -28,6 +28,10 @@
 - **Task Scheduling**: Delayed and periodic task execution
 - **Task Batching**: Group and manage multiple related tasks together
 - **Result Caching**: In-memory result caching with TTL support
+- **Rate Limiting**: Token bucket algorithm for throttling
+- **Task Chaining**: Functional composition and pipeline execution
+- **Metrics Export**: JSON, Prometheus, and CSV formats
+- **Unit Test Framework**: Built-in testing utilities
 
 ## 📋 Requirements
 
@@ -54,6 +58,10 @@ make -j$(nproc)
 ./performance_test
 ./distributed_demo
 ./new_features_demo
+./more_features_demo
+
+# Run tests
+./unit_tests
 ```
 
 ### Basic Usage
@@ -130,14 +138,21 @@ nexustask/
 │       ├── distributed_executor.hpp # Distributed execution
 │       ├── task_scheduler.hpp  # Task scheduling
 │       ├── task_batch.hpp      # Task batching
-│       └── task_cache.hpp      # Result caching
+│       ├── task_cache.hpp      # Result caching
+│       ├── rate_limiter.hpp    # Rate limiting
+│       ├── task_chain.hpp      # Task chaining
+│       ├── metrics_exporter.hpp # Metrics export
+│       └── test_framework.hpp  # Unit test framework
 ├── src/                        # Implementation files
-└── examples/                   # Example applications
-    ├── demo.cpp                # Basic usage examples
-    ├── performance_test.cpp    # Performance benchmarking
-    ├── distributed_demo.cpp    # Distributed execution demo
-    ├── advanced_examples.cpp   # Advanced features
-    └── new_features_demo.cpp    # New features demo
+├── examples/                   # Example applications
+│   ├── demo.cpp                # Basic usage examples
+│   ├── performance_test.cpp    # Performance benchmarking
+│   ├── distributed_demo.cpp    # Distributed execution demo
+│   ├── advanced_examples.cpp   # Advanced features
+│   ├── new_features_demo.cpp   # New features demo
+│   └── more_features_demo.cpp  # More features demo
+└── tests/                      # Unit tests
+    └── unit_tests.cpp          # Test suite
 ```
 
 ## 🎯 Performance Characteristics
@@ -267,15 +282,47 @@ for (int i = 0; i < 100; ++i) {
 batch.wait();  // Wait for all tasks
 ```
 
-### Example 7: Result Caching
+### Example 8: Rate Limiting
 ```cpp
-TaskResultCache<std::string> cache(std::chrono::minutes(5));
+RateLimiter limiter({10, std::chrono::seconds(1), std::chrono::milliseconds(100)});
 
-auto result = cache.get("expensive_computation");
-if (!result.has_value()) {
-    result = expensive_computation();
-    cache.put("expensive_computation", *result);
+if (limiter.try_acquire("api")) {
+    executor.submit([]() -> TaskResult {
+        return api_call();
+    }, "APITask");
+} else {
+    // Rate limited
 }
+```
+
+### Example 9: Task Chaining
+```cpp
+TaskChain chain(executor);
+chain.then([](TaskResult input) -> TaskResult {
+    return process(input);
+}, "Step1")
+.then([](TaskResult input) -> TaskResult {
+    return transform(input);
+}, "Step2")
+.then([](TaskResult input) -> TaskResult {
+    return finalize(input);
+}, "Step3");
+
+chain.execute(initial_data);
+```
+
+### Example 10: Metrics Export
+```cpp
+auto metrics = executor.monitor()->get_metrics();
+
+// Export as JSON
+std::string json = MetricsExporter::to_json(metrics);
+
+// Export as Prometheus
+std::string prom = MetricsExporter::to_prometheus(metrics);
+
+// Export as CSV
+std::string csv = MetricsExporter::to_csv(metrics);
 ```
 
 ## 📈 Monitoring & Metrics
