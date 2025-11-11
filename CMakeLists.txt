@@ -47,6 +47,13 @@ target_link_libraries(advanced_examples taskengine pthread)
 add_executable(new_features_demo examples/new_features_demo.cpp)
 target_link_libraries(new_features_demo taskengine pthread)
 
+add_executable(more_features_demo examples/more_features_demo.cpp)
+target_link_libraries(more_features_demo taskengine pthread)
+
+# Tests
+add_executable(unit_tests tests/unit_tests.cpp)
+target_link_libraries(unit_tests taskengine pthread)
+
 # Install
 install(TARGETS taskengine DESTINATION lib)
 install(DIRECTORY include/ DESTINATION include)

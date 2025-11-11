@@ -16,6 +16,9 @@
 #include "task_scheduler.hpp"
 #include "task_batch.hpp"
 #include "task_cache.hpp"
+#include "rate_limiter.hpp"
+#include "task_chain.hpp"
+#include "metrics_exporter.hpp"
 
 namespace task_engine {
     // All components are now available
